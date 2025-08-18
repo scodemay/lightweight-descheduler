@@ -1,7 +1,7 @@
 # 构建配置
 APP_NAME := lightweight-descheduler
 VERSION := v1.0.0
-REGISTRY := scodemay
+REGISTRY := chenyuma725
 IMAGE := $(REGISTRY)/$(APP_NAME):$(VERSION)
 LATEST_IMAGE := $(REGISTRY)/$(APP_NAME):latest
 

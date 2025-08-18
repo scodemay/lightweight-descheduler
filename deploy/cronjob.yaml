@@ -24,7 +24,7 @@ spec:
           restartPolicy: OnFailure
           containers:
           - name: lightweight-descheduler
-            image: scodemay/lightweight-descheduler:v1.0.0  # 您的 Docker Hub 镜像
+            image: chenyuma725/lightweight-descheduler:v1.0.0  # 您的 Docker Hub 镜像
             imagePullPolicy: IfNotPresent
             command:
             - /app/lightweight-descheduler

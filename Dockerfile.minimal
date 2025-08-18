@@ -1,0 +1,16 @@
+# 最小化Dockerfile - 使用预构建的二进制文件
+FROM scratch
+
+# 复制预构建的二进制文件（如果存在）
+COPY bin/lightweight-descheduler /app/lightweight-descheduler
+
+# 设置用户
+USER 65534:65534
+
+# 设置入口点
+ENTRYPOINT ["/app/lightweight-descheduler"]
+
+# 设置标签
+LABEL maintainer="scodemay@example.com"
+LABEL description="轻量级 Kubernetes 重调度器"
+LABEL version="v1.0.0"
