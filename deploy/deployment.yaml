@@ -20,7 +20,7 @@ spec:
       serviceAccountName: lightweight-descheduler
       containers:
       - name: lightweight-descheduler
-        image: lightweight-descheduler:v1.0.0  # 需要替换为实际的镜像地址
+        image: scodemay/lightweight-descheduler:v1.0.0  # 您的 Docker Hub 镜像
         imagePullPolicy: IfNotPresent
         command:
         - /app/lightweight-descheduler
