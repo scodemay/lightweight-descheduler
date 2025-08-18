@@ -1,0 +1,56 @@
+# 轻量级重调度器配置文件
+
+# 基本配置
+interval: "5m"          # 运行间隔，支持格式: 1m, 5m, 1h 等
+dryRun: false           # 是否只是模拟运行，不实际驱逐Pod
+logLevel: "info"        # 日志级别: debug, info, warn, error
+
+# 节点选择器（可选）
+# 只处理匹配这些标签的节点
+# nodeSelector:
+#   environment: "production"
+#   node-type: "worker"
+
+# 驱逐限制
+limits:
+  maxPodsToEvictPerNode: 5        # 每个节点最大驱逐Pod数量
+  maxPodsToEvictPerNamespace: 3   # 每个命名空间最大驱逐Pod数量
+  maxPodsToEvictTotal: 20         # 每次运行最大驱逐Pod总数
+
+# 策略配置
+strategies:
+  # 失败Pod清理策略
+  removeFailedPods:
+    enabled: true
+    minPodLifetimeSeconds: 300    # Pod最小存活时间（秒），小于此时间的Pod不会被驱逐
+    excludeOwnerKinds:            # 排除的Owner类型
+      - "Job"                     # 不驱逐Job创建的失败Pod
+    # includedNamespaces:         # 只处理这些命名空间（可选）
+    #   - "default"
+    #   - "my-app"
+    excludedNamespaces:           # 排除这些命名空间
+      - "kube-system"
+      - "kube-public"
+      - "kube-node-lease"
+
+  # 低节点利用率策略
+  lowNodeUtilization:
+    enabled: true
+    numberOfNodes: 1              # 只有当低利用率节点数量大于此值时才运行
+    thresholds:                   # 低利用率阈值（百分比）
+      cpu: 20                     # CPU利用率低于20%
+      memory: 20                  # 内存利用率低于20%
+      pods: 20                    # Pod数量利用率低于20%
+    targetThresholds:             # 目标利用率阈值（百分比）
+      cpu: 80                     # CPU利用率高于80%的节点Pod可能被驱逐
+      memory: 80                  # 内存利用率高于80%的节点Pod可能被驱逐
+      pods: 80                    # Pod数量利用率高于80%的节点Pod可能被驱逐
+
+  # 重复Pod清理策略
+  removeDuplicates:
+    enabled: true
+    excludeOwnerKinds:            # 排除的Owner类型
+      - "DaemonSet"               # 不处理DaemonSet的Pod
+    excludedNamespaces:           # 排除这些命名空间
+      - "kube-system"
+      - "kube-public"

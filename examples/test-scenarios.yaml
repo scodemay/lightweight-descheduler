@@ -1,0 +1,177 @@
+# 测试场景示例
+# 这些示例可以帮助您测试重调度器的各种功能
+
+---
+# 场景1: 创建失败的Pod用于测试失败Pod清理策略
+apiVersion: v1
+kind: Pod
+metadata:
+  name: failing-pod-1
+  namespace: default
+  labels:
+    test-scenario: "failed-pod"
+spec:
+  restartPolicy: Never
+  containers:
+  - name: failing-container
+    image: busybox
+    command: ["/bin/sh"]
+    args: ["-c", "echo 'This pod will fail'; exit 1"]
+
+---
+# 场景2: 创建多个相同的Pod用于测试重复Pod清理
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: duplicate-test-app
+  namespace: default
+  labels:
+    test-scenario: "duplicate-pods"
+spec:
+  replicas: 6  # 创建多个副本，可能在同一节点上产生重复
+  selector:
+    matchLabels:
+      app: duplicate-test
+  template:
+    metadata:
+      labels:
+        app: duplicate-test
+        test-scenario: "duplicate-pods"
+    spec:
+      containers:
+      - name: app
+        image: nginx:alpine
+        resources:
+          requests:
+            cpu: 10m
+            memory: 16Mi
+          limits:
+            cpu: 50m
+            memory: 64Mi
+
+---
+# 场景3: 创建高资源需求的Pod用于测试节点利用率平衡
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: resource-heavy-app
+  namespace: default
+  labels:
+    test-scenario: "resource-utilization"
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: resource-heavy
+  template:
+    metadata:
+      labels:
+        app: resource-heavy
+        test-scenario: "resource-utilization"
+    spec:
+      containers:
+      - name: app
+        image: nginx:alpine
+        resources:
+          requests:
+            cpu: 500m      # 请求较多CPU
+            memory: 512Mi  # 请求较多内存
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+
+---
+# 场景4: 创建Job产生的失败Pod（通常不应该被清理）
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: failing-job
+  namespace: default
+  labels:
+    test-scenario: "job-failed-pod"
+spec:
+  template:
+    metadata:
+      labels:
+        test-scenario: "job-failed-pod"
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: job-container
+        image: busybox
+        command: ["/bin/sh"]
+        args: ["-c", "echo 'Job task failed'; exit 1"]
+
+---
+# 场景5: 创建测试命名空间和资源
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: descheduler-test
+  labels:
+    test-purpose: "descheduler-testing"
+
+---
+# 在测试命名空间中创建一些Pod
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-app
+  namespace: descheduler-test
+  labels:
+    test-scenario: "namespace-test"
+spec:
+  replicas: 4
+  selector:
+    matchLabels:
+      app: test-app
+  template:
+    metadata:
+      labels:
+        app: test-app
+        test-scenario: "namespace-test"
+    spec:
+      containers:
+      - name: app
+        image: nginx:alpine
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+
+---
+# 场景6: 创建带有节点亲和性的Pod
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: node-affinity-app
+  namespace: default
+  labels:
+    test-scenario: "node-affinity"
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: node-affinity-app
+  template:
+    metadata:
+      labels:
+        app: node-affinity-app
+        test-scenario: "node-affinity"
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/os
+                operator: In
+                values:
+                - linux
+      containers:
+      - name: app
+        image: nginx:alpine
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi

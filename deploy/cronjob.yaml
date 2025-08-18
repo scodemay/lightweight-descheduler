@@ -1,0 +1,76 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: lightweight-descheduler
+  namespace: kube-system
+  labels:
+    app: lightweight-descheduler
+    version: v1.0.0
+spec:
+  # 每5分钟运行一次，可以根据需要调整
+  schedule: "*/5 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: lightweight-descheduler
+            version: v1.0.0
+        spec:
+          serviceAccountName: lightweight-descheduler
+          restartPolicy: OnFailure
+          containers:
+          - name: lightweight-descheduler
+            image: lightweight-descheduler:v1.0.0  # 需要替换为实际的镜像地址
+            imagePullPolicy: IfNotPresent
+            command:
+            - /app/lightweight-descheduler
+            args:
+            - -config=/etc/descheduler/config.yaml
+            - -log-level=2
+            volumeMounts:
+            - name: config
+              mountPath: /etc/descheduler
+              readOnly: true
+            resources:
+              requests:
+                cpu: 100m
+                memory: 128Mi
+              limits:
+                cpu: 500m
+                memory: 512Mi
+            env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              runAsNonRoot: true
+              runAsUser: 65534
+              capabilities:
+                drop:
+                - ALL
+          volumes:
+          - name: config
+            configMap:
+              name: lightweight-descheduler-config
+          nodeSelector:
+            kubernetes.io/os: linux
+          tolerations:
+          - key: "CriticalAddonsOnly"
+            operator: "Exists"
+          - key: "node-role.kubernetes.io/master"
+            operator: "Exists"
+            effect: "NoSchedule"
+          - key: "node-role.kubernetes.io/control-plane"
+            operator: "Exists"
+            effect: "NoSchedule"
