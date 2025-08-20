@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"syscall"
+	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -29,7 +30,7 @@ var (
 )
 
 const (
-	version = "v1.0.0"
+	version = "v1.0.1"
 	appName = "lightweight-descheduler"
 )
 
@@ -169,7 +170,7 @@ func createKubernetesClient() (kubernetes.Interface, error) {
 	}
 
 	// 测试连接
-	ctx, cancel := context.WithTimeout(context.Background(), 10)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	_, err = client.CoreV1().Nodes().List(ctx, metav1.ListOptions{Limit: 1})

@@ -5,7 +5,7 @@ metadata:
   namespace: kube-system
   labels:
     app: lightweight-descheduler
-    version: v1.0.1
+    version: v1.0.0
 spec:
   replicas: 1
   selector:
@@ -15,12 +15,12 @@ spec:
     metadata:
       labels:
         app: lightweight-descheduler
-        version: v1.0.1
+        version: v1.0.0
     spec:
       serviceAccountName: lightweight-descheduler
       containers:
       - name: lightweight-descheduler
-        image: chenyuma725/lightweight-descheduler:v1.0.1-amd64  # 使用 amd64 架构镜像
+        image: chenyuma725/chenyuma725/lightweight-descheduler:v1.0.0  # 您的 Docker Hub 镜像
         imagePullPolicy: IfNotPresent
         command:
         - /app/lightweight-descheduler
@@ -38,9 +38,26 @@ spec:
           limits:
             cpu: 500m
             memory: 512Mi
-        # 注意: 移除了健康检查，因为 scratch 镜像没有 shell
-        # 对于轻量级重调度器，进程存活检查已足够
-        # livenessProbe 和 readinessProbe 已移除以兼容 scratch 镜像
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - "ps aux | grep '[l]ightweight-descheduler' || exit 1"
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - "ps aux | grep '[l]ightweight-descheduler' || exit 1"
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
         env:
         - name: POD_NAME
           valueFrom:

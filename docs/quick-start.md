@@ -74,12 +74,13 @@ lightweight-descheduler-xxxxxxxxx-xxxxx   1/1     Running   0          2m
 
 ```bash
 $ kubectl logs -n kube-system -l app=lightweight-descheduler --tail=20
-I0101 12:00:00.000000       1 main.go:XX] Starting lightweight-descheduler v1.0.0
-I0101 12:00:00.000000       1 main.go:XX] Configuration loaded successfully
-I0101 12:00:00.000000       1 scheduler.go:XX] Created scheduler with 2 enabled strategies
-I0101 12:00:00.000000       1 scheduler.go:XX]   - RemoveFailedPods
-I0101 12:00:00.000000       1 scheduler.go:XX]   - LowNodeUtilization
-I0101 12:00:00.000000       1 scheduler.go:XX] === Starting descheduling cycle ===
+I0818 10:40:35.000000       1 main.go:56] Starting lightweight-descheduler v1.0.0
+I0818 10:40:35.000000       1 main.go:64] Configuration loaded successfully
+I0818 10:40:35.000000       1 main.go:74] Kubernetes client created successfully
+I0818 10:40:35.000000       1 scheduler.go:XX] Created scheduler with 2 enabled strategies
+I0818 10:40:35.000000       1 scheduler.go:XX]   - RemoveFailedPods
+I0818 10:40:35.000000       1 scheduler.go:XX]   - LowNodeUtilization
+I0818 10:40:35.000000       1 scheduler.go:XX] === Starting descheduling cycle ===
 ```
 
 ## 🎛️ 基本配置
@@ -177,6 +178,44 @@ Evictions by reason:
   Failed pod cleanup: 3
 ```
 
+## 🏗️ 自定义镜像构建（可选）
+
+如果您需要修改源码并构建自己的镜像：
+
+### 单平台构建
+
+```bash
+# 构建 amd64 镜像
+docker build -t your-registry/lightweight-descheduler:v1.0.1-amd64 .
+docker push your-registry/lightweight-descheduler:v1.0.1-amd64
+
+# 构建 arm64 镜像（在 ARM64 机器上）
+docker build -t your-registry/lightweight-descheduler:v1.0.1-arm64 .
+docker push your-registry/lightweight-descheduler:v1.0.1-arm64
+```
+
+### 多架构镜像构建（推荐）
+
+```bash
+# 安装 Docker Buildx（如果尚未安装）
+docker buildx create --use
+
+# 构建并推送多架构镜像
+docker buildx build --platform linux/amd64,linux/arm64 \
+  -t your-registry/lightweight-descheduler:v1.0.1 --push .
+
+# 验证多架构支持
+docker manifest inspect your-registry/lightweight-descheduler:v1.0.1
+```
+
+### 更新部署使用自定义镜像
+
+```bash
+# 更新 Deployment 使用您的镜像
+kubectl set image deploy/lightweight-descheduler -n kube-system \
+  lightweight-descheduler=your-registry/lightweight-descheduler:v1.0.1
+```
+
 ## 🔧 常见配置调整
 
 ### 调整运行频率
@@ -207,6 +246,17 @@ kubectl patch configmap lightweight-descheduler-config -n kube-system --type jso
 3. **监控应用服务**，确保重调度不影响业务
 4. **备份重要数据**，虽然重调度器只驱逐 Pod，但建议做好准备
 
+## 📝 版本说明
+
+### v1.0.1 改进
+
+- ✅ **修复客户端连接超时问题** - 将 Kubernetes API 客户端连接超时从 10 纳秒修正为 10 秒
+- ✅ **支持多架构镜像** - 提供 amd64 和 arm64 架构的镜像标签
+- ✅ **改进 Scratch 镜像兼容性** - 移除了对 shell 的依赖，提高安全性和镜像体积
+- ✅ **更好的错误处理** - 改进连接重试和错误日志输出
+
+**迁移指南**: 如果从 v1.0.0 升级，请使用新的镜像标签并移除旧的健康检查配置。
+
 ## 🔍 故障排除
 
 ### Pod 不启动
@@ -219,6 +269,37 @@ kubectl auth can-i --list --as=system:serviceaccount:kube-system:lightweight-des
 kubectl describe pod -n kube-system -l app=lightweight-descheduler
 ```
 
+### 镜像平台不匹配错误
+
+如果看到类似 `no match for platform in manifest` 的错误：
+
+```bash
+# 检查集群节点架构
+kubectl get nodes -L kubernetes.io/arch,kubernetes.io/os
+
+# 使用对应架构的镜像标签
+# 对于 amd64 集群：
+kubectl set image deploy/lightweight-descheduler -n kube-system \
+  lightweight-descheduler=chenyuma725/lightweight-descheduler:v1.0.1-amd64
+
+# 对于 arm64 集群：
+kubectl set image deploy/lightweight-descheduler -n kube-system \
+  lightweight-descheduler=chenyuma725/lightweight-descheduler:v1.0.1-arm64
+```
+
+### 健康检查失败（Scratch 镜像）
+
+如果使用 scratch 基础镜像且健康检查失败（找不到 `/bin/sh`）：
+
+```bash
+# 移除基于 shell 的健康检查
+kubectl patch deploy lightweight-descheduler -n kube-system --type='json' \
+  -p='[{"op": "remove", "path": "/spec/template/spec/containers/0/livenessProbe"}, 
+       {"op": "remove", "path": "/spec/template/spec/containers/0/readinessProbe"}]'
+```
+
+**注意**: 移除健康检查后，Pod 将仅依赖进程状态判断健康状态。对于轻量级重调度器这种自包含应用，这通常是可接受的。
+
 ### 配置不生效
 
 ```bash
@@ -229,12 +310,28 @@ kubectl rollout restart deployment/lightweight-descheduler -n kube-system
 kubectl get configmap lightweight-descheduler-config -n kube-system -o yaml
 ```
 
+### Kubernetes 客户端连接超时
+
+如果看到 `context deadline exceeded` 错误：
+
+```bash
+# 检查 API Server 连接
+kubectl cluster-info
+
+# 如果使用自定义镜像，确保超时设置合理
+# 源码中应该使用：context.WithTimeout(context.Background(), 10*time.Second)
+# 而不是：context.WithTimeout(context.Background(), 10)  // 10 纳秒!
+```
+
 ### 权限错误
 
 ```bash
 # 检查 ServiceAccount 和权限绑定
 kubectl get serviceaccount lightweight-descheduler -n kube-system
 kubectl get clusterrolebinding lightweight-descheduler
+
+# 检查 ClusterRole 权限
+kubectl describe clusterrole lightweight-descheduler
 ```
 
 ## 📚 下一步
