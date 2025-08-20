@@ -5,7 +5,7 @@ metadata:
   namespace: kube-system
   labels:
     app: lightweight-descheduler
-    version: v1.0.0
+    version: v1.0.1
 spec:
   # 每5分钟运行一次，可以根据需要调整
   schedule: "*/5 * * * *"
@@ -18,13 +18,13 @@ spec:
         metadata:
           labels:
             app: lightweight-descheduler
-            version: v1.0.0
+            version: v1.0.1
         spec:
           serviceAccountName: lightweight-descheduler
           restartPolicy: OnFailure
           containers:
           - name: lightweight-descheduler
-            image: chenyuma725/lightweight-descheduler:v1.0.0  # 您的 Docker Hub 镜像
+            image: chenyuma725/lightweight-descheduler:v1.0.1-amd64  # 使用 amd64 架构镜像
             imagePullPolicy: IfNotPresent
             command:
             - /app/lightweight-descheduler

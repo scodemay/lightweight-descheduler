@@ -1,6 +1,6 @@
 # 构建配置
 APP_NAME := lightweight-descheduler
-VERSION := v1.0.0
+VERSION := v1.0.1
 REGISTRY := chenyuma725
 IMAGE := $(REGISTRY)/$(APP_NAME):$(VERSION)
 LATEST_IMAGE := $(REGISTRY)/$(APP_NAME):latest
@@ -70,34 +70,25 @@ run: build
 	@echo "Running $(APP_NAME) locally..."
 	./bin/$(APP_NAME) -config configs/config.yaml -log-level 3
 
-# 生成部署文件
-.PHONY: generate-manifests
-generate-manifests:
-	@echo "Generating Kubernetes manifests..."
-	@mkdir -p generated/
-	@# 替换镜像名称
-	@sed 's|lightweight-descheduler:v1.0.0|$(IMAGE)|g' deploy/deployment.yaml > generated/deployment.yaml
-	@sed 's|lightweight-descheduler:v1.0.0|$(IMAGE)|g' deploy/cronjob.yaml > generated/cronjob.yaml
-	@cp deploy/rbac.yaml generated/
-	@cp deploy/configmap.yaml generated/
-	@echo "Manifests generated in generated/"
+# 生成部署文件（已移除，直接使用 deploy/ 目录）
+# generate-manifests 目标已废弃，deploy/ 目录包含最新的部署文件
 
 # 部署到Kubernetes (Deployment模式)
 .PHONY: deploy
-deploy: generate-manifests
+deploy:
 	@echo "Deploying to Kubernetes (Deployment mode)..."
-	kubectl apply -f generated/rbac.yaml
-	kubectl apply -f generated/configmap.yaml
-	kubectl apply -f generated/deployment.yaml
+	kubectl apply -f deploy/rbac.yaml
+	kubectl apply -f deploy/configmap.yaml
+	kubectl apply -f deploy/deployment.yaml
 	@echo "Deployment complete"
 
 # 部署到Kubernetes (CronJob模式)
 .PHONY: deploy-cronjob
-deploy-cronjob: generate-manifests
+deploy-cronjob:
 	@echo "Deploying to Kubernetes (CronJob mode)..."
-	kubectl apply -f generated/rbac.yaml
-	kubectl apply -f generated/configmap.yaml
-	kubectl apply -f generated/cronjob.yaml
+	kubectl apply -f deploy/rbac.yaml
+	kubectl apply -f deploy/configmap.yaml
+	kubectl apply -f deploy/cronjob.yaml
 	@echo "CronJob deployment complete"
 
 # 从Kubernetes卸载
@@ -105,7 +96,6 @@ deploy-cronjob: generate-manifests
 undeploy:
 	@echo "Removing from Kubernetes..."
 	kubectl delete -f deploy/ --ignore-not-found=true
-	kubectl delete -f generated/ --ignore-not-found=true
 	@echo "Undeploy complete"
 
 # 查看Pod日志
@@ -147,7 +137,7 @@ help:
 	@echo "  docker-build        构建Docker镜像"
 	@echo "  docker-push         推送Docker镜像"
 	@echo "  run                 本地运行"
-	@echo "  generate-manifests  生成Kubernetes部署文件"
+
 	@echo "  deploy              部署到Kubernetes (Deployment)"
 	@echo "  deploy-cronjob      部署到Kubernetes (CronJob)"
 	@echo "  undeploy            从Kubernetes卸载"
