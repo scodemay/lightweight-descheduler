@@ -212,6 +212,6 @@ func printHelp() {
 
 配置文件示例请参考 configs/config.yaml
 
-更多信息请访问: https://github.com/your-org/lightweight-descheduler
+更多信息请访问: https://github.com/scodemay/lightweight-descheduler
 `, appName, version, appName, appName, appName, appName)
 }

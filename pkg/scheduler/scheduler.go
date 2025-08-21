@@ -228,12 +228,8 @@ func (s *Scheduler) printCycleStats(startTime time.Time) {
 }
 
 // GetStats 获取调度器统计信息
+// 注意：目前主要通过printCycleStats使用，但保留此方法供外部监控系统调用
 func (s *Scheduler) GetStats() eviction.EvictionStats {
-	return s.evictor.GetEvictionStats()
+    return s.evictor.GetEvictionStats()
 }
 
-// Stop 停止调度器
-func (s *Scheduler) Stop() {
-	klog.Infof("Scheduler stopping...")
-	// 这里可以添加清理逻辑
-}
